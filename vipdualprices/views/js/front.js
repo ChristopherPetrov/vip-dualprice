@@ -21,20 +21,32 @@
     if (!rawText) {
       return null;
     }
-    var cleaned = rawText.replace(/[^0-9,\\.]/g, '');
-    if (!cleaned) {
+    var primarySegment = rawText.split('(')[0].split('|')[0];
+    var candidate = primarySegment.replace(/\\s+/g, '');
+    if (!candidate) {
       return null;
     }
-    if (cleaned.indexOf(',') !== -1 && cleaned.indexOf('.') !== -1) {
-      if (cleaned.lastIndexOf(',') > cleaned.lastIndexOf('.')) {
-        cleaned = cleaned.replace(/\\./g, '').replace(',', '.');
-      } else {
-        cleaned = cleaned.replace(/,/g, '');
+    if (/^[0-9]+$/.test(candidate)) {
+      var integerValue = parseFloat(candidate);
+      if (!isNaN(integerValue)) {
+        return candidate.length > 3 ? integerValue / 100 : integerValue;
       }
-    } else if (cleaned.indexOf(',') !== -1) {
-      cleaned = cleaned.replace(',', '.');
     }
-    var value = parseFloat(cleaned);
+    var matches = candidate.match(/[0-9]+(?:[.,][0-9]{1,2})?/g);
+    if (!matches || !matches.length) {
+      return null;
+    }
+    var valueText = matches[matches.length - 1];
+    if (valueText.indexOf(',') !== -1 && valueText.indexOf('.') !== -1) {
+      if (valueText.lastIndexOf(',') > valueText.lastIndexOf('.')) {
+        valueText = valueText.replace(/\\./g, '').replace(',', '.');
+      } else {
+        valueText = valueText.replace(/,/g, '');
+      }
+    } else if (valueText.indexOf(',') !== -1) {
+      valueText = valueText.replace(',', '.');
+    }
+    var value = parseFloat(valueText);
     return isNaN(value) ? null : value;
   }
 
@@ -63,6 +75,30 @@
     return primaryAmount * rate;
   }
 
+  function extractAmount(el) {
+    if (!el) {
+      return null;
+    }
+    var textAmount = parsePrice(el.textContent);
+    if (textAmount) {
+      return textAmount;
+    }
+    if (el.hasAttribute('content')) {
+      var contentAmount = parsePrice(String(el.getAttribute('content')));
+      if (contentAmount) {
+        return contentAmount;
+      }
+    }
+    var dataValue = el.getAttribute('data-value') || el.getAttribute('data-raw-value') || el.getAttribute('data-price');
+    if (dataValue) {
+      var dataAmount = parsePrice(String(dataValue));
+      if (dataAmount) {
+        return dataAmount;
+      }
+    }
+    return null;
+  }
+
   function ensureSecondary(el) {
     if (!el) {
       return;
@@ -76,7 +112,7 @@
     if (el.parentNode && el.parentNode.querySelector('.vipdp-secondary')) {
       return;
     }
-    var amount = parsePrice(el.textContent);
+    var amount = extractAmount(el);
     if (!amount) {
       return;
     }
@@ -107,51 +143,139 @@
     });
   }
 
-  function enhanceProductPrices() {
-    if (!vipdpConfig.enableProduct) {
+  function enhanceWithin(containerSelector, priceSelectors) {
+    var container = document.querySelector(containerSelector);
+    if (!container) {
       return;
     }
-    enhanceSelector('.product-prices .current-price span[itemprop=\"price\"]');
-    enhanceSelector('.product-prices .current-price span');
-    enhanceSelector('.product-prices .price');
-    enhanceSelector('.product-price');
-    enhanceSelector('.product-miniature .price');
+    var selector = priceSelectors.join(', ');
+    container.querySelectorAll(selector).forEach(function (el) {
+      ensureSecondary(el);
+    });
   }
 
   function enhanceCartPrices() {
     if (!vipdpConfig.enableCart) {
       return;
     }
-    enhanceSelector('.cart-item .product-price');
-    enhanceSelector('.cart-item .price');
-    enhanceSelector('.cart-summary .cart-total .value');
-    enhanceSelector('.cart-summary .cart-total .price');
-    enhanceSelector('.cart-summary .cart-total .cart-value');
+    enhanceWithin('.cart-items', [
+      '.product-price',
+      '.price',
+      '.product-line-info .value',
+      '.product-line-info .product-price',
+    ]);
+    enhanceWithin('.cart-summary', [
+      '.cart-total .value',
+      '.cart-total .price',
+      '.cart-total .cart-value',
+      '.value',
+      '.amount',
+    ]);
+    enhanceWithin('.cart-detailed-totals', [
+      '.value',
+      '.price',
+    ]);
+    enhanceWithin('.cart-summary-products', [
+      '.value',
+      '.price',
+    ]);
   }
 
   function enhanceCartModal() {
     if (!vipdpConfig.enableCart) {
       return;
     }
-    enhanceSelector('#blockcart-modal .product-price');
-    enhanceSelector('#blockcart-modal .price');
-    enhanceSelector('#blockcart-modal .cart-content .value');
+    enhanceWithin('#blockcart-modal', [
+      '.product-price',
+      '.price',
+      '.cart-content .value',
+      '.cart-content .amount',
+    ]);
   }
 
   function enhanceOrderConfirmation() {
     if (!vipdpConfig.enableCart) {
       return;
     }
-    enhanceSelector('.order-confirmation .order-confirmation-table .value');
-    enhanceSelector('.order-confirmation .total-value');
-    enhanceSelector('.order-confirmation .value');
+    enhanceWithin('.order-confirmation', [
+      '.order-confirmation-table .value',
+      '.order-confirmation-table .price',
+      '.total-value',
+      '.value',
+    ]);
+    enhanceWithin('.order-confirmation .cart-summary', [
+      '.value',
+      '.price',
+    ]);
+  }
+
+  function enhanceCheckoutPaymentStep() {
+    if (!vipdpConfig.enableCart) {
+      return;
+    }
+    enhanceWithin('#checkout-payment-step', [
+      '.order-summary-content .value',
+      '.order-summary-content .price',
+      '.order-summary-content .amount',
+      '.order-confirmation-table .value',
+    ]);
+    enhanceWithin('#checkout-summary', [
+      '.value',
+      '.price',
+      '.amount',
+    ]);
+  }
+
+  function normalizeProductSecondary() {
+    var priceContainer = document.querySelector('.product-prices');
+    if (!priceContainer) {
+      return;
+    }
+    var currentPrice = priceContainer.querySelector('.current-price');
+    if (!currentPrice) {
+      return;
+    }
+    var secondaryPrices = priceContainer.querySelectorAll('.vipdp-secondary');
+    if (!secondaryPrices.length) {
+      return;
+    }
+    var primarySecondary = secondaryPrices[0];
+    if (!currentPrice.contains(primarySecondary)) {
+      currentPrice.appendChild(primarySecondary);
+    }
+    secondaryPrices.forEach(function (node, index) {
+      if (index > 0) {
+        node.remove();
+      }
+    });
+  }
+
+  function enhanceHeaderCart() {
+    if (!vipdpConfig.enableCart) {
+      return;
+    }
+    enhanceSelector('.blockcart .cart-price');
+    enhanceSelector('.blockcart .cart-total');
+    enhanceSelector('.blockcart .price');
+    enhanceWithin('#_desktop_cart', [
+      '.cart-price',
+      '.cart-total',
+      '.price',
+    ]);
+    enhanceWithin('#_mobile_cart', [
+      '.cart-price',
+      '.cart-total',
+      '.price',
+    ]);
   }
 
   function refreshAll() {
-    enhanceProductPrices();
     enhanceCartPrices();
     enhanceCartModal();
     enhanceOrderConfirmation();
+    enhanceCheckoutPaymentStep();
+    enhanceHeaderCart();
+    normalizeProductSecondary();
   }
 
   document.addEventListener('DOMContentLoaded', refreshAll);

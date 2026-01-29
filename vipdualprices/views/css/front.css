@@ -20,3 +20,10 @@
 .vipdp-confirmation-data {
   display: none;
 }
+
+.product-prices .current-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  flex-wrap: wrap;
+}
