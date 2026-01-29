@@ -15,13 +15,14 @@ total or payment currency.
   currencies (default is 1 BGN = 1 / 1.95583 EUR). No external API calls are
   made.
 * **Configurable display** – enable or disable secondary prices on product
-  pages and listings, in the order confirmation page, and in outgoing emails.
-  Choose whether the secondary price appears in parentheses or separated by a
-  vertical bar.
+  pages and listings, the cart/checkout/confirmation views, and in outgoing
+  emails. Choose whether the secondary price appears in parentheses or
+  separated by a vertical bar, and whether the secondary currency is shown as
+  a symbol or ISO code.
 * **Hook‑based implementation** – the module relies on core hooks such as
   `displayProductPriceBlock` and `sendMailAlterTemplateVars`, so it integrates
-  cleanly with your theme and PrestaShop core. It avoids editing core files or
-  injecting JavaScript hacks.
+  cleanly with your theme and PrestaShop core. It avoids editing core files and
+  uses a lightweight front‑office script to enhance cart and checkout views.
 
 ## Installation
 
@@ -41,10 +42,12 @@ From the module configuration page you can:
 * Toggle where the secondary price is visible:
   * **Products &amp; listings** – shows secondary price next to product prices on
     product pages, category lists and other price blocks.
-  * **Order confirmation page** – appends the total in the secondary currency
-    after an order is placed.
+  * **Cart/checkout/confirmation** – displays secondary prices alongside cart
+    line items, totals, and order confirmation totals.
   * **Emails** – exposes additional template variables (see below) so you can
     display secondary totals in order confirmation emails.
+* Pick whether the secondary currency tag is shown as a symbol (€, лв) or ISO
+  code (EUR, BGN).
 
 ## Email templates
 
