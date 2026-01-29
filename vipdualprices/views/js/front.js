@@ -67,20 +67,24 @@
     if (!el) {
       return null;
     }
-    var dataValue = el.getAttribute('data-value') || el.getAttribute('data-raw-value') || el.getAttribute('data-price');
-    if (dataValue) {
-      var numeric = parseFloat(String(dataValue).replace(',', '.'));
-      if (!isNaN(numeric)) {
-        return numeric;
-      }
+    var textAmount = parsePrice(el.textContent);
+    if (textAmount) {
+      return textAmount;
     }
     if (el.hasAttribute('content')) {
-      var contentValue = parseFloat(String(el.getAttribute('content')).replace(',', '.'));
-      if (!isNaN(contentValue)) {
-        return contentValue;
+      var contentAmount = parsePrice(String(el.getAttribute('content')));
+      if (contentAmount) {
+        return contentAmount;
       }
     }
-    return parsePrice(el.textContent);
+    var dataValue = el.getAttribute('data-value') || el.getAttribute('data-raw-value') || el.getAttribute('data-price');
+    if (dataValue) {
+      var dataAmount = parsePrice(String(dataValue));
+      if (dataAmount) {
+        return dataAmount;
+      }
+    }
+    return null;
   }
 
   function ensureSecondary(el) {
@@ -136,19 +140,6 @@
     container.querySelectorAll(selector).forEach(function (el) {
       ensureSecondary(el);
     });
-  }
-
-  function enhanceProductPrices() {
-    if (!vipdpConfig.enableProduct) {
-      return;
-    }
-    enhanceWithin('.product-prices', [
-      '.current-price span[itemprop=\"price\"]',
-      '.current-price span',
-      '.price',
-    ]);
-    enhanceSelector('.product-price');
-    enhanceSelector('.product-miniature .price');
   }
 
   function enhanceCartPrices() {
@@ -223,12 +214,31 @@
     ]);
   }
 
+  function enhanceHeaderCart() {
+    if (!vipdpConfig.enableCart) {
+      return;
+    }
+    enhanceSelector('.blockcart .cart-price');
+    enhanceSelector('.blockcart .cart-total');
+    enhanceSelector('.blockcart .price');
+    enhanceWithin('#_desktop_cart', [
+      '.cart-price',
+      '.cart-total',
+      '.price',
+    ]);
+    enhanceWithin('#_mobile_cart', [
+      '.cart-price',
+      '.cart-total',
+      '.price',
+    ]);
+  }
+
   function refreshAll() {
-    enhanceProductPrices();
     enhanceCartPrices();
     enhanceCartModal();
     enhanceOrderConfirmation();
     enhanceCheckoutPaymentStep();
+    enhanceHeaderCart();
   }
 
   document.addEventListener('DOMContentLoaded', refreshAll);
