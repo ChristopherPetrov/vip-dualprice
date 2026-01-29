@@ -1,0 +1,17 @@
+/*
+ * Styling for the Dual Price Display module. This CSS keeps the secondary
+ * price subtle by using a lighter colour and smaller font size. Adjust
+ * spacing to integrate nicely with various themes.
+ */
+.vipdp-secondary {
+  color: #666;
+  font-size: 0.9em;
+  margin-left: 5px;
+  white-space: nowrap;
+}
+
+.vipdp-secondary-total {
+  color: #666;
+  font-size: 1em;
+  margin-top: 10px;
+}

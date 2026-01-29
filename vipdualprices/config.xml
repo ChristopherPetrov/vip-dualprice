@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module>
+  <name>vipdualprices</name>
+  <displayName>Dual Price Display (BGN/EUR)</displayName>
+  <version>1.0.0</version>
+  <author>ChatGPT</author>
+  <tab>pricing_promotion</tab>
+  <description><![CDATA[Displays product prices in your shop using a primary and secondary currency. Useful for displaying Bulgarian lev and euro together with a fixed conversion rate.]]></description>
+  <need_instance>0</need_instance>
+  <is_configurable>1</is_configurable>
+  <ps_versions_compliancy>
+    <min>1.7.0.0</min>
+    <max>1.7.9.9</max>
+  </ps_versions_compliancy>
+</module>
