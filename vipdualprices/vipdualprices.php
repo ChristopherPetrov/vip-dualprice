@@ -89,6 +89,7 @@ class Vipdualprices extends Module
         Configuration::updateValue('VIPDP_SHOW_SECONDARY', 1);
         Configuration::updateValue('VIPDP_FIXED_RATE', '1.95583');
         Configuration::updateValue('VIPDP_FORMAT', 'paren');
+        Configuration::updateValue('VIPDP_TAG_STYLE', 'symbol');
         Configuration::updateValue('VIPDP_ENABLE_PRODUCT', 1);
         Configuration::updateValue('VIPDP_ENABLE_CART', 1);
         Configuration::updateValue('VIPDP_ENABLE_EMAILS', 1);
@@ -107,6 +108,7 @@ class Vipdualprices extends Module
             'VIPDP_SHOW_SECONDARY',
             'VIPDP_FIXED_RATE',
             'VIPDP_FORMAT',
+            'VIPDP_TAG_STYLE',
             'VIPDP_ENABLE_PRODUCT',
             'VIPDP_ENABLE_CART',
             'VIPDP_ENABLE_EMAILS',
@@ -132,6 +134,7 @@ class Vipdualprices extends Module
             $showSecondary = (int)Tools::getValue('VIPDP_SHOW_SECONDARY', 0);
             $rate = (float)Tools::getValue('VIPDP_FIXED_RATE', 1.95583);
             $format = Tools::getValue('VIPDP_FORMAT', 'paren');
+            $tagStyle = Tools::getValue('VIPDP_TAG_STYLE', 'symbol');
             $enableProduct = (int)Tools::getValue('VIPDP_ENABLE_PRODUCT', 0);
             $enableCart = (int)Tools::getValue('VIPDP_ENABLE_CART', 0);
             $enableEmails = (int)Tools::getValue('VIPDP_ENABLE_EMAILS', 0);
@@ -144,6 +147,7 @@ class Vipdualprices extends Module
                 Configuration::updateValue('VIPDP_SHOW_SECONDARY', $showSecondary);
                 Configuration::updateValue('VIPDP_FIXED_RATE', $rate);
                 Configuration::updateValue('VIPDP_FORMAT', $format);
+                Configuration::updateValue('VIPDP_TAG_STYLE', $tagStyle);
                 Configuration::updateValue('VIPDP_ENABLE_PRODUCT', $enableProduct);
                 Configuration::updateValue('VIPDP_ENABLE_CART', $enableCart);
                 Configuration::updateValue('VIPDP_ENABLE_EMAILS', $enableEmails);
@@ -225,6 +229,19 @@ class Vipdualprices extends Module
                         ),
                     ),
                     array(
+                        'type' => 'select',
+                        'label' => $this->l('Secondary currency tag'),
+                        'name' => 'VIPDP_TAG_STYLE',
+                        'options' => array(
+                            'query' => array(
+                                array('id_option' => 'symbol', 'name' => $this->l('Symbol (€ / лв)')),
+                                array('id_option' => 'code', 'name' => $this->l('ISO code (EUR / BGN)')),
+                            ),
+                            'id' => 'id_option',
+                            'name' => 'name',
+                        ),
+                    ),
+                    array(
                         'type' => 'switch',
                         'label' => $this->l('Show on products and listings'),
                         'name' => 'VIPDP_ENABLE_PRODUCT',
@@ -236,7 +253,7 @@ class Vipdualprices extends Module
                     ),
                     array(
                         'type' => 'switch',
-                        'label' => $this->l('Show on order confirmation page'),
+                        'label' => $this->l('Show on cart, checkout, and order confirmation'),
                         'name' => 'VIPDP_ENABLE_CART',
                         'is_bool' => true,
                         'values' => array(
@@ -277,6 +294,7 @@ class Vipdualprices extends Module
             'VIPDP_SHOW_SECONDARY' => (int)Configuration::get('VIPDP_SHOW_SECONDARY'),
             'VIPDP_FIXED_RATE' => Configuration::get('VIPDP_FIXED_RATE'),
             'VIPDP_FORMAT' => Configuration::get('VIPDP_FORMAT', 'paren'),
+            'VIPDP_TAG_STYLE' => Configuration::get('VIPDP_TAG_STYLE', 'symbol'),
             'VIPDP_ENABLE_PRODUCT' => (int)Configuration::get('VIPDP_ENABLE_PRODUCT'),
             'VIPDP_ENABLE_CART' => (int)Configuration::get('VIPDP_ENABLE_CART'),
             'VIPDP_ENABLE_EMAILS' => (int)Configuration::get('VIPDP_ENABLE_EMAILS'),
@@ -298,13 +316,66 @@ class Vipdualprices extends Module
                 'modules/'.$this->name.'/views/css/front.css',
                 array('media' => 'all', 'priority' => 150)
             );
+            $this->context->controller->registerJavascript(
+                'module-'.$this->name.'-front-js',
+                'modules/'.$this->name.'/views/js/front.js',
+                array('position' => 'bottom', 'priority' => 150)
+            );
+            Media::addJsDef(array(
+                'vipdpConfig' => array(
+                    'rate' => (float)Configuration::get('VIPDP_FIXED_RATE'),
+                    'primary' => Configuration::get('VIPDP_PRIMARY', 'BGN'),
+                    'format' => Configuration::get('VIPDP_FORMAT', 'paren'),
+                    'tagStyle' => Configuration::get('VIPDP_TAG_STYLE', 'symbol'),
+                    'showSecondary' => (int)Configuration::get('VIPDP_SHOW_SECONDARY'),
+                    'enableProduct' => (int)Configuration::get('VIPDP_ENABLE_PRODUCT'),
+                    'enableCart' => (int)Configuration::get('VIPDP_ENABLE_CART'),
+                    'currencySymbols' => array(
+                        'BGN' => 'лв',
+                        'EUR' => '€',
+                    ),
+                    'currencyCodes' => array(
+                        'BGN' => 'BGN',
+                        'EUR' => 'EUR',
+                    ),
+                ),
+            ));
         }
+    }
+
+    /**
+     * Resolves the secondary currency, amount, and currency object.
+     *
+     * @param float $amount Primary currency amount
+     * @return array
+     */
+    protected function getSecondaryMeta($amount)
+    {
+        $rate = (float)Configuration::get('VIPDP_FIXED_RATE');
+        $primary = Configuration::get('VIPDP_PRIMARY', 'BGN');
+        $secondaryIso = ($primary === 'BGN') ? 'EUR' : 'BGN';
+        if ($primary === 'BGN') {
+            $secondaryAmount = ($rate > 0) ? $amount / $rate : 0;
+        } else {
+            $secondaryAmount = $amount * $rate;
+        }
+        $secondaryCurrencyId = (int)Currency::getIdByIsoCode($secondaryIso, (int)$this->context->shop->id);
+        $secondaryCurrency = null;
+        if ($secondaryCurrencyId > 0) {
+            $secondaryCurrency = new Currency($secondaryCurrencyId);
+        }
+
+        return array(
+            'amount' => $secondaryAmount,
+            'iso' => $secondaryIso,
+            'currency' => $secondaryCurrency,
+        );
     }
 
     /**
      * Computes and formats the secondary price based on the configured rate and
      * primary currency. Uses Currency::getIdByIsoCode() to obtain the secondary
-     * currency object from its ISO code【317472538161586†L895-L907】 and
+     * currency object from its ISO code and
      * Tools::displayPrice() for formatting. See PrestaShop core for the
      * implementation of these helpers.
      *
@@ -313,24 +384,26 @@ class Vipdualprices extends Module
      */
     protected function getSecondaryFormatted($amount)
     {
-        $rate = (float)Configuration::get('VIPDP_FIXED_RATE');
-        $primary = Configuration::get('VIPDP_PRIMARY', 'BGN');
-        // Determine secondary ISO code
-        $secondaryIso = ($primary === 'BGN') ? 'EUR' : 'BGN';
-        // Convert amount
-        if ($primary === 'BGN') {
-            $secondaryAmount = ($rate > 0) ? $amount / $rate : 0;
-        } else {
-            $secondaryAmount = $amount * $rate;
+        $meta = $this->getSecondaryMeta($amount);
+        $tagStyle = Configuration::get('VIPDP_TAG_STYLE', 'symbol');
+        if ($meta['currency'] instanceof Currency) {
+            $formatted = Tools::displayPrice($meta['amount'], $meta['currency']);
+            if ($tagStyle === 'code') {
+                $clean = trim(str_replace($meta['currency']->sign, '', $formatted));
+                return trim($clean).' '.$meta['currency']->iso_code;
+            }
+            return $formatted;
         }
-        // Retrieve Currency object
-        $secondaryCurrencyId = (int)Currency::getIdByIsoCode($secondaryIso, (int)$this->context->shop->id);
-        if ($secondaryCurrencyId <= 0) {
-            // If currency is missing, fall back to default formatting without symbol
-            return sprintf('%0.2f', $secondaryAmount);
+
+        $number = sprintf('%0.2f', $meta['amount']);
+        if ($tagStyle === 'code') {
+            return $number.' '.$meta['iso'];
         }
-        $secondaryCurrency = new Currency($secondaryCurrencyId);
-        return Tools::displayPrice($secondaryAmount, $secondaryCurrency);
+        $symbol = ($meta['iso'] === 'EUR') ? '€' : 'лв';
+        if ($meta['iso'] === 'EUR') {
+            return $symbol.$number;
+        }
+        return $number.' '.$symbol;
     }
 
     /**
@@ -381,10 +454,8 @@ class Vipdualprices extends Module
     }
 
     /**
-     * Adds secondary totals to the order confirmation page. This method
-     * leverages the displayOrderConfirmation hook which is executed after an
-     * order is placed. We compute the secondary total for the entire order and
-     * append a paragraph to the confirmation view.
+     * Adds a marker for the order confirmation page so the front‑office script
+     * can inject secondary totals next to the standard totals table.
      *
      * @param array $params Parameters passed by PrestaShop, including 'order'
      * @return string HTML snippet
@@ -397,13 +468,7 @@ class Vipdualprices extends Module
         if (!isset($params['order']) || !($params['order'] instanceof Order)) {
             return '';
         }
-        /** @var Order $order */
-        $order = $params['order'];
-        $primaryTotal = (float)$order->total_paid;
-        $secondaryFormatted = $this->getSecondaryFormatted($primaryTotal);
-        $format = Configuration::get('VIPDP_FORMAT', 'paren');
-        $label = $this->l('Total in secondary currency');
-        return '<p class="vipdp-secondary-total">'.$label.': '.$secondaryFormatted.'</p>';
+        return '<div class="vipdp-confirmation-data" aria-hidden="true"></div>';
     }
 
     /**
