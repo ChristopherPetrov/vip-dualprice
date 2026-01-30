@@ -207,6 +207,7 @@
       '.value',
       '.price',
     ]);
+    normalizeOrderConfirmationLineItems();
   }
 
   function enhanceCheckoutPaymentStep() {
@@ -250,6 +251,51 @@
     });
   }
 
+  function moveSecondaryInto(container, targetSelector) {
+    if (!container) {
+      return;
+    }
+    var target = container.querySelector(targetSelector);
+    if (!target) {
+      return;
+    }
+    var secondary = null;
+    Array.prototype.forEach.call(container.children || [], function (child) {
+      if (!secondary && child.classList && child.classList.contains('vipdp-secondary')) {
+        secondary = child;
+      }
+    });
+    if (secondary) {
+      target.appendChild(secondary);
+    }
+  }
+
+  function normalizeCartPreviewSecondary() {
+    if (!vipdpConfig.enableCart) {
+      return;
+    }
+    document.querySelectorAll('#blockcart-content .cart-summary-line').forEach(function (line) {
+      moveSecondaryInto(line, '.value');
+    });
+    document.querySelectorAll('#blockcart-content .cart-totals .clearfix').forEach(function (line) {
+      moveSecondaryInto(line, '.value');
+    });
+  }
+
+  function normalizeOrderConfirmationLineItems() {
+    document.querySelectorAll('.order-confirmation-table .order-line').forEach(function (line) {
+      var details = line.querySelector('.details');
+      if (details) {
+        details.querySelectorAll('.vipdp-secondary').forEach(function (node) {
+          node.remove();
+        });
+      }
+      line.querySelectorAll('.qty .text-right').forEach(function (priceColumn) {
+        ensureSecondary(priceColumn);
+      });
+    });
+  }
+
   function enhanceHeaderCart() {
     if (!vipdpConfig.enableCart) {
       return;
@@ -276,6 +322,7 @@
     enhanceCheckoutPaymentStep();
     enhanceHeaderCart();
     normalizeProductSecondary();
+    normalizeCartPreviewSecondary();
   }
 
   document.addEventListener('DOMContentLoaded', refreshAll);
