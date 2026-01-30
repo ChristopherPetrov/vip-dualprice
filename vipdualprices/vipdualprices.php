@@ -62,6 +62,7 @@ class Vipdualprices extends Module
         return parent::install()
             && $this->registerHook('displayProductPriceBlock')
             && $this->registerHook('actionFrontControllerSetMedia')
+            && $this->registerHook('displayVipDualPrice')
             && $this->registerHook('sendMailAlterTemplateVars')
             && $this->registerHook('displayOrderConfirmation')
             && $this->initConfig();
@@ -469,6 +470,28 @@ class Vipdualprices extends Module
             return '';
         }
         return '<div class="vipdp-confirmation-data" aria-hidden="true"></div>';
+    }
+
+    /**
+     * Renders a secondary price for custom hook placements in theme templates.
+     *
+     * @param array $params Expected to include primary_price (float)
+     * @return string
+     */
+    public function hookDisplayVipDualPrice($params)
+    {
+        if (!Configuration::get('VIPDP_SHOW_SECONDARY')) {
+            return '';
+        }
+        if (!isset($params['primary_price'])) {
+            return '';
+        }
+        $amount = (float)$params['primary_price'];
+        if ($amount <= 0) {
+            return '';
+        }
+        $secondaryFormatted = $this->getSecondaryFormatted($amount);
+        return '<span class="vipdp-secondary">('.$secondaryFormatted.')</span>';
     }
 
     /**
