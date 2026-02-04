@@ -425,6 +425,7 @@ class Vipdualprices extends Module
         $clean = html_entity_decode($clean, ENT_QUOTES, 'UTF-8');
         $clean = str_replace(array("\xc2\xa0", ' '), '', $clean);
         $clean = preg_replace('/[^0-9,\.\-]/', '', $clean);
+        $clean = preg_replace('/(?<!\d)[\.,]|[\.,](?!\d)/', '', $clean);
         if ($clean === '') {
             return null;
         }
