@@ -15,12 +15,12 @@ total or payment currency.
   currencies (default is 1 BGN = 1 / 1.95583 EUR). No external API calls are
   made.
 * **Configurable display** – enable or disable secondary prices on product
-  pages and listings, the cart/checkout/confirmation views, and in outgoing
-  emails. Choose whether the secondary price appears in parentheses or
+  pages and listings and the cart/checkout/confirmation views. Choose whether the
+  secondary price appears in parentheses or
   separated by a vertical bar, and whether the secondary currency is shown as
   a symbol or ISO code.
 * **Hook‑based implementation** – the module relies on core hooks such as
-  `displayProductPriceBlock` and `sendMailAlterTemplateVars`, so it integrates
+  `displayProductPriceBlock`, so it integrates
   cleanly with your theme and PrestaShop core. It avoids editing core files and
   uses a lightweight front‑office script to enhance cart and checkout views.
 
@@ -44,30 +44,8 @@ From the module configuration page you can:
     product pages, category lists and other price blocks.
   * **Cart/checkout/confirmation** – displays secondary prices alongside cart
     line items, totals, and order confirmation totals.
-  * **Emails** – exposes additional template variables (see below) so you can
-    display secondary totals in order confirmation emails.
 * Pick whether the secondary currency tag is shown as a symbol (€, лв) or ISO
   code (EUR, BGN).
-
-## Email templates
-
-When the email toggle is enabled the module adds a set of variables to each
-email sent via `Mail::send()`【525733741268901†L623-L650】. You can use these variables in your mail
-templates (for example in `mails/en/order_conf.html`):
-
-| Variable               | Description                            |
-|------------------------|----------------------------------------|
-| `{TOTAL_PAID_SECONDARY}`     | Total paid in secondary currency      |
-| `{TOTAL_PRODUCTS_SECONDARY}` | Total products cost in secondary currency |
-| `{TOTAL_SHIPPING_SECONDARY}` | Shipping total in secondary currency  |
-| `{TOTAL_TAX_SECONDARY}`      | Total tax in secondary currency        |
-| `{TOTAL_DISCOUNTS_SECONDARY}`| Total discounts in secondary currency   |
-
-Example usage in `order_conf.html`:
-
-```html
-{total_paid} <span style="color:#666;">({TOTAL_PAID_SECONDARY})</span>
-```
 
 ## Removing the module
 
