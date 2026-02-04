@@ -16,7 +16,6 @@
  *  - VIPDP_FORMAT (string)    Display format: 'paren' for parentheses or 'pipe' for bar
  *  - VIPDP_ENABLE_PRODUCT (int) 1/0 whether to show secondary price on product pages and listings
  *  - VIPDP_ENABLE_CART (int)    1/0 whether to show secondary totals on the order confirmation page
- *  - VIPDP_ENABLE_EMAILS (int)  1/0 whether to expose secondary totals for email templates
  *
  * @author ChatGPT
  * @license GPL-3.0-or-later
@@ -63,7 +62,6 @@ class Vipdualprices extends Module
             && $this->registerHook('displayProductPriceBlock')
             && $this->registerHook('actionFrontControllerSetMedia')
             && $this->registerHook('displayVipDualPrice')
-            && $this->registerHook('sendMailAlterTemplateVars')
             && $this->registerHook('displayOrderConfirmation')
             && $this->initConfig();
     }
@@ -93,7 +91,6 @@ class Vipdualprices extends Module
         Configuration::updateValue('VIPDP_TAG_STYLE', 'symbol');
         Configuration::updateValue('VIPDP_ENABLE_PRODUCT', 1);
         Configuration::updateValue('VIPDP_ENABLE_CART', 1);
-        Configuration::updateValue('VIPDP_ENABLE_EMAILS', 1);
         return true;
     }
 
@@ -112,7 +109,6 @@ class Vipdualprices extends Module
             'VIPDP_TAG_STYLE',
             'VIPDP_ENABLE_PRODUCT',
             'VIPDP_ENABLE_CART',
-            'VIPDP_ENABLE_EMAILS',
         );
         foreach ($keys as $k) {
             Configuration::deleteByName($k);
@@ -138,7 +134,6 @@ class Vipdualprices extends Module
             $tagStyle = Tools::getValue('VIPDP_TAG_STYLE', 'symbol');
             $enableProduct = (int)Tools::getValue('VIPDP_ENABLE_PRODUCT', 0);
             $enableCart = (int)Tools::getValue('VIPDP_ENABLE_CART', 0);
-            $enableEmails = (int)Tools::getValue('VIPDP_ENABLE_EMAILS', 0);
 
             // Validate rate
             if ($rate <= 0) {
@@ -151,7 +146,6 @@ class Vipdualprices extends Module
                 Configuration::updateValue('VIPDP_TAG_STYLE', $tagStyle);
                 Configuration::updateValue('VIPDP_ENABLE_PRODUCT', $enableProduct);
                 Configuration::updateValue('VIPDP_ENABLE_CART', $enableCart);
-                Configuration::updateValue('VIPDP_ENABLE_EMAILS', $enableEmails);
                 $output .= $this->displayConfirmation($this->l('Settings updated'));
             }
         }
@@ -262,16 +256,6 @@ class Vipdualprices extends Module
                             array('id' => 'cart_off', 'value' => 0, 'label' => $this->l('Disabled')),
                         ),
                     ),
-                    array(
-                        'type' => 'switch',
-                        'label' => $this->l('Expose variables for emails'),
-                        'name' => 'VIPDP_ENABLE_EMAILS',
-                        'is_bool' => true,
-                        'values' => array(
-                            array('id' => 'email_on', 'value' => 1, 'label' => $this->l('Enabled')),
-                            array('id' => 'email_off', 'value' => 0, 'label' => $this->l('Disabled')),
-                        ),
-                    ),
                 ),
                 'submit' => array(
                     'title' => $this->l('Save'),
@@ -298,7 +282,6 @@ class Vipdualprices extends Module
             'VIPDP_TAG_STYLE' => Configuration::get('VIPDP_TAG_STYLE', 'symbol'),
             'VIPDP_ENABLE_PRODUCT' => (int)Configuration::get('VIPDP_ENABLE_PRODUCT'),
             'VIPDP_ENABLE_CART' => (int)Configuration::get('VIPDP_ENABLE_CART'),
-            'VIPDP_ENABLE_EMAILS' => (int)Configuration::get('VIPDP_ENABLE_EMAILS'),
         );
     }
 
@@ -534,54 +517,5 @@ class Vipdualprices extends Module
         }
         $secondaryFormatted = $this->getSecondaryFormatted($amount);
         return '<span class="vipdp-secondary">('.$secondaryFormatted.')</span>';
-    }
-
-    /**
-     * Extends email template variables using sendMailAlterTemplateVars hook. This
-     * hook is triggered when Mail::send() is called【525733741268901†L623-L650】, providing an opportunity to
-     * add or modify template variables before the email is rendered. We add
-     * secondary totals for commonly used variables such as {total_paid},
-     * {total_products}, and {total_shipping}. Template designers can then
-     * incorporate these variables in their mail templates.
-     *
-     * @param array $params Contains 'template' and 'template_vars' by reference
-     */
-    public function hookSendMailAlterTemplateVars($params)
-    {
-        if (!Configuration::get('VIPDP_SHOW_SECONDARY') || !Configuration::get('VIPDP_ENABLE_EMAILS')) {
-            return;
-        }
-        if (!isset($params['template_vars']) || !is_array($params['template_vars'])) {
-            return;
-        }
-        $templateVars = &$params['template_vars'];
-        // List of standard order total variables to replicate
-        $totals = array(
-            'total_paid',
-            'total_products',
-            'total_shipping',
-            'total_tax',
-            'total_discounts',
-        );
-        foreach ($totals as $baseKey) {
-            $tplKey = '{'.strtoupper($baseKey).'}';
-            if (!isset($templateVars[$tplKey])) {
-                continue;
-            }
-            // Extract numeric value from the formatted price. We strip HTML tags and
-            // non‑numeric characters; this is a best‑effort approach because
-            // email variables already contain formatted prices.
-            $raw = strip_tags($templateVars[$tplKey]);
-            // Replace non‑numeric characters except dot and comma
-            $clean = preg_replace('/[^0-9,\.]/', '', $raw);
-            // Normalise comma to dot for decimal separator
-            $clean = str_replace(',', '.', $clean);
-            $amount = (float)$clean;
-            if ($amount <= 0) {
-                continue;
-            }
-            $secondaryFormatted = $this->getSecondaryFormatted($amount);
-            $templateVars['{'.strtoupper($baseKey).'_SECONDARY}'] = $secondaryFormatted;
-        }
     }
 }
