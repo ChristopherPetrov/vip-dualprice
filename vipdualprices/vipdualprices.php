@@ -408,6 +408,47 @@ class Vipdualprices extends Module
     }
 
     /**
+     * Normalizes a price value to a float, handling localized formatted strings.
+     *
+     * @param mixed $value
+     * @return float|null
+     */
+    private function normalizePriceToFloat($value)
+    {
+        if (is_int($value) || is_float($value)) {
+            return (float)$value;
+        }
+        if (!is_string($value)) {
+            return null;
+        }
+        $clean = strip_tags($value);
+        $clean = html_entity_decode($clean, ENT_QUOTES, 'UTF-8');
+        $clean = str_replace(array("\xc2\xa0", ' '), '', $clean);
+        $clean = preg_replace('/[^0-9,\.\-]/', '', $clean);
+        if ($clean === '') {
+            return null;
+        }
+        $hasComma = strpos($clean, ',') !== false;
+        $hasDot = strpos($clean, '.') !== false;
+        if ($hasComma && !$hasDot) {
+            $clean = str_replace(',', '.', $clean);
+        } elseif ($hasComma && $hasDot) {
+            $lastComma = strrpos($clean, ',');
+            $lastDot = strrpos($clean, '.');
+            if ($lastComma > $lastDot) {
+                $clean = str_replace('.', '', $clean);
+                $clean = str_replace(',', '.', $clean);
+            } else {
+                $clean = str_replace(',', '', $clean);
+            }
+        }
+        if (!is_numeric($clean)) {
+            return null;
+        }
+        return (float)$clean;
+    }
+
+    /**
      * Hook into the displayProductPriceBlock hook. This hook is triggered at
      * multiple locations in the front office when product prices are rendered.
      * We append the secondary price only for relevant types (price, unit_price,
@@ -486,8 +527,8 @@ class Vipdualprices extends Module
         if (!isset($params['primary_price'])) {
             return '';
         }
-        $amount = (float)$params['primary_price'];
-        if ($amount <= 0) {
+        $amount = $this->normalizePriceToFloat($params['primary_price']);
+        if ($amount === null || $amount <= 0) {
             return '';
         }
         $secondaryFormatted = $this->getSecondaryFormatted($amount);
