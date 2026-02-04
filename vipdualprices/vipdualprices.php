@@ -41,7 +41,7 @@ class Vipdualprices extends Module
         $this->author = 'ChatGPT';
         $this->need_instance = 0;
         $this->bootstrap = true;
-        $this->ps_versions_compliancy = array('min' => '1.7.0.0', 'max' => '1.7.9.9');
+        $this->ps_versions_compliancy = array('min' => '1.7.0.0', 'max' => '8.2.99');
 
         parent::__construct();
 

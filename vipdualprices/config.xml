@@ -10,6 +10,6 @@
   <is_configurable>1</is_configurable>
   <ps_versions_compliancy>
     <min>1.7.0.0</min>
-    <max>1.7.9.9</max>
+    <max>8.2.99</max>
   </ps_versions_compliancy>
 </module>
